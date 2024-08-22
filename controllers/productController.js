@@ -92,4 +92,32 @@ const getProductByPriceRange = async(req, res) =>{
     }
 }
 
-export {getProducts, getProductById, getProductByCategory, getProductByPriceRange}
+const createNewProduct = async (req, res) => {
+    try {
+        const { product_name, price, category, star_rating, description, product_code, imageurl } = req.body;
+
+        // Validate Input
+        if (!product_name || !price || !category || !star_rating || !description || !product_code || !imageurl) {
+            return res.status(400).json({ error: 'All Fields are required' });
+        }
+
+        const insertQuery = `INSERT into practice.products(product_name, price, category, star_rating, description, product_code, imageurl) values('${product_name}', ${price}, '${category}',  ${star_rating}, '${description}', '${product_code}', '${imageurl}') RETURNING*`;
+
+        const result = await pool.query(insertQuery, [
+            product_name,
+            price,
+            category,
+            star_rating,
+            description,
+            product_code,
+            imageurl
+        ]);
+
+        return res.status(201).send(result.rows[0], { message: 'Product Created Successfully' });
+    } catch (error) {
+        console.error("Error Caught: " + error.message);
+        return res.status(500).json({ error: `Internal Server Error ${error.message}` });
+    }
+}
+
+export {getProducts, getProductById, getProductByCategory, getProductByPriceRange, createNewProduct}
