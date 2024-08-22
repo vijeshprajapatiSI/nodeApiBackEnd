@@ -68,56 +68,92 @@ const getProductByCategory = async (req, res) => {
     }
 }
 
-const getProductByPriceRange = async(req, res) =>{
+const getProductsByPriceRange = async (req, res) => {
     try {
-        const min = req.query.min;
-        const max = req.query.max;
-        const selectQuery = `select * from practice.products where price >= ${min} and price <= ${max}`;
-        const result = await pool.query(selectQuery);
-        if (res.statusCode === 200) {
-            if (result.rowCount >= 1) {
-                return res.status(200).json(result.rows)
-            }
-            else {
-                return res.status(404).json({ error: 'No Products found for the given category' })
-            }
-        }
-        else {
-            return res.status(400).json({ error: 'Error Retrieving Data' })
-        }
+      const min = req.query.min;
+      const max = req.query.max;
+      const selectQuery = `select * from practice.products where price between ${min} and ${max}`;
+      const result = await pool.query(selectQuery);
+      if (result.rowCount > 0) {
+        return res.status(200).json(result.rows);
+      } else {
+        return res.status(404).json({ error: "No products found" });
+      }
+    } catch (error) {
+      console.log("Error Caught " + error?.message);
+      return res.status(500).json({ error: "Internal Error" });
     }
-    catch (error) {
-        console.log("Error Caught " + error?.message)
-        return res.status(500).json({ error: 'Internal Error' })
+  };
+
+  const createNewProduct = async (req, res) => {
+    try {
+        const newProduct = req.body;
+
+        // Validate Input
+        if (!newProduct.product_name || !newProduct.price || !newProduct.category || !newProduct.star_rating || !newProduct.description || !newProduct.product_code || !newProduct.imageurl) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+
+        // Use parameterized query
+        const insertQuery = `
+            INSERT INTO practice.products (product_name, price, category, star_rating, description, product_code, imageurl)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `;
+        const values = [
+            newProduct.product_name,
+            newProduct.price,
+            newProduct.category,
+            newProduct.star_rating,
+            newProduct.description,
+            newProduct.product_code,
+            newProduct.imageurl
+        ];
+
+        const result = await pool.query(insertQuery, values);
+
+        return res.status(201).send({ message: 'Product Created Successfully' });
+    } catch (error) {
+        console.error("Error Caught: " + error.message);
+        return res.status(500).json({ error: `Internal Server Error: ${error.message}` });
     }
 }
 
-const createNewProduct = async (req, res) => {
+const updateProductStarRating = async (req, res) => {
     try {
-        const { product_name, price, category, star_rating, description, product_code, imageurl } = req.body;
+        const id = req.params.id;
+        const { price, star_rating } = req.body;
+
+        const updateQuery = `UPDATE practice.products SET price = $1 ,star_rating = $2 WHERE product_id = ${id} ;`
+        const values = [price, star_rating]
+        const result = await pool.query(updateQuery, values);
 
         // Validate Input
-        if (!product_name || !price || !category || !star_rating || !description || !product_code || !imageurl) {
-            return res.status(400).json({ error: 'All Fields are required' });
+        if (!price && !star_rating) {
+            return res.status(400).json({ error: 'Product not found' });
         }
-
-        const insertQuery = `INSERT into practice.products(product_name, price, category, star_rating, description, product_code, imageurl) values('${product_name}', ${price}, '${category}',  ${star_rating}, '${description}', '${product_code}', '${imageurl}') RETURNING*`;
-
-        const result = await pool.query(insertQuery, [
-            product_name,
-            price,
-            category,
-            star_rating,
-            description,
-            product_code,
-            imageurl
-        ]);
-
-        return res.status(201).send(result.rows[0], { message: 'Product Created Successfully' });
+        else {
+            return res.status(200).send("Product Updated Successfully");
+        }
     } catch (error) {
         console.error("Error Caught: " + error.message);
         return res.status(500).json({ error: `Internal Server Error ${error.message}` });
     }
 }
 
-export {getProducts, getProductById, getProductByCategory, getProductByPriceRange, createNewProduct}
+const deleteProductById = async (req,res) => {
+    try {
+        const id = req.params.id;
+        const deleteQuery = `DELETE FROM practice.products WHERE product_id=${id}`;
+        const result = await pool.query(deleteQuery);
+        if(result.rowCount === 1){
+            return res.status(200).json({message: 'Product deleted successfully'});
+        }
+        else{
+            return res.status(404).json({error: 'Product not found'});
+        }
+    } catch (error) {
+        console.log(error.message);
+    }
+}
+
+export {getProducts, getProductById, getProductByCategory, getProductsByPriceRange, createNewProduct, updateProductStarRating, deleteProductById}
