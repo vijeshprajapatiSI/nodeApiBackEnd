@@ -68,4 +68,28 @@ const getProductByCategory = async (req, res) => {
     }
 }
 
-export {getProducts, getProductById, getProductByCategory}
+const getProductByPriceRange = async(req, res) =>{
+    try {
+        const min = req.query.min;
+        const max = req.query.max;
+        const selectQuery = `select * from practice.products where price >= ${min} and price <= ${max}`;
+        const result = await pool.query(selectQuery);
+        if (res.statusCode === 200) {
+            if (result.rowCount >= 1) {
+                return res.status(200).json(result.rows)
+            }
+            else {
+                return res.status(404).json({ error: 'No Products found for the given category' })
+            }
+        }
+        else {
+            return res.status(400).json({ error: 'Error Retrieving Data' })
+        }
+    }
+    catch (error) {
+        console.log("Error Caught " + error?.message)
+        return res.status(500).json({ error: 'Internal Error' })
+    }
+}
+
+export {getProducts, getProductById, getProductByCategory, getProductByPriceRange}
