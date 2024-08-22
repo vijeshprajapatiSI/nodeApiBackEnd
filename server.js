@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors'
 import homeRouter from './routes/homeRouter.js';
 import { productsRouter } from './routes/productsRouter.js';
+import { usersRouter } from './routes/usersRouter.js';
 import { getErrorStatus } from './controllers/404ErrorController.js';
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors());
 
 app.use('/', homeRouter);
 app.use('/products', productsRouter);
+app.use('/user', usersRouter);
 app.get('*',getErrorStatus);
 
 app.listen(port, () => {
