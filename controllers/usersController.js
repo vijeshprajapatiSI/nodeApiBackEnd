@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
 import pool from "../DB/db.js";
+import jwt from "jsonwebtoken";
+import {config } from "dotenv";
 
 const registerUser = async (req,res) => {
     try{
@@ -26,33 +28,48 @@ const registerUser = async (req,res) => {
 
 const loginUser = async (req, res) => {
     try {
-        const { name, password } = req.body;
-
-        const selectQuery = `select name, password from practice.users where name = $1`;
-        const values = [name]
-        const result = await pool.query(selectQuery,values);
-        // console.log(result)
-        if (result.rows.length === 0) {
-            return res.status(401).json({ message: 'Invalid Credentials : User Not Found' })
-        }
-        else { //Compare provided password with hashed password
-
-            const user = result.rows[0]
-            const isMatch = await bcrypt.compare(password, user.password);
-
-            if (!isMatch) {
-                return res.status(401).json({ message: 'Invalid Credentials : Password Did Not Match' })
-            }
-            else {
-                return res.status(200).json({ message: 'Password match'})
-            }
-        }
+      const { email, password } = req.body;
+  
+      if (!email || !password) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+  
+      const query = `SELECT * FROM practice.users WHERE email = '${email}'`;
+  
+      const result = await pool.query(query);
+  
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      const user = result.rows[0];
+  
+      if (!bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      } else {
+        const token = jwt.sign(
+          {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          },
+          SECRET,
+          {
+            expiresIn: "2m",
+          }
+        );
+        return res.json({
+          message: "Login successful",
+          token: token,
+        });
+      }
+    } catch (error) {
+      console.error("Error Caught: " + error.message);
+      return res
+        .status(500)
+        .json({ error: `Internal Server Error ${error.message}` });
     }
-    catch (error) {
-        console.log("Error Caught" + error?.message)
-        return res.status(500).json({ error: `Internal Error ${error.message}` })
-    }
-}
+  }
 
 const getUsers = async (req, res) => {
     try {
